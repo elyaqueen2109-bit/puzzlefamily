@@ -1,0 +1,885 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title>🧩 Table Puzzles — Free Movement</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Segoe UI', Tahoma, sans-serif;
+        }
+
+        body {
+            background: linear-gradient(135deg, #1a1a1a 0%, #2a2a2a 50%, #1a1a1a 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+            overflow: hidden;
+            position: relative;
+            user-select: none;
+            -webkit-user-select: none;
+            -webkit-tap-highlight-color: transparent;
+            touch-action: none;
+        }
+
+        .container {
+            max-width: 1400px;
+            width: 100%;
+            height: 90vh;
+            background: rgba(0, 0, 0, 0.5);
+            border-radius: 48px;
+            padding: 20px 25px 30px;
+            box-shadow: 0 30px 60px rgba(0, 0, 0, 0.6);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            position: relative;
+            z-index: 1;
+            display: flex;
+            flex-direction: column;
+        }
+
+        h1 {
+            font-size: 32px;
+            font-weight: 700;
+            color: #ffffff;
+            text-align: center;
+            margin-bottom: 2px;
+            text-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
+            flex-shrink: 0;
+        }
+
+        .sub {
+            text-align: center;
+            color: #cccccc;
+            font-size: 16px;
+            margin-bottom: 12px;
+            flex-shrink: 0;
+        }
+
+        .game-area {
+            background: transparent;
+            border-radius: 32px;
+            padding: 20px;
+            position: relative;
+            overflow: hidden;
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            min-height: 0;
+        }
+
+        /* ===== TABLE BACKGROUND ===== */
+        .puzzle-container {
+            position: relative;
+            width: 100%;
+            flex: 1;
+            min-height: 0;
+            overflow: hidden;
+            border-radius: 20px;
+            background-image: url('table.png');
+            background-size: cover;
+            background-position: center;
+            background-repeat: no-repeat;
+            box-shadow: 
+                inset 0 0 30px rgba(0, 0, 0, 0.3),
+                0 10px 30px rgba(0, 0, 0, 0.5);
+        }
+
+        /* ===== PUZZLE PIECE ===== */
+        .puzzle-piece {
+            position: absolute;
+            display: inline-block;
+            background: transparent;
+            border: none;
+            overflow: visible;
+            cursor: grab;
+            transition: all 0.3s cubic-bezier(0.2, 0.9, 0.3, 1.1);
+            max-width: 160px;
+            filter: drop-shadow(0 3px 8px rgba(0, 0, 0, 0.3));
+            z-index: 1;
+            animation: float 4s ease-in-out infinite;
+            animation-delay: calc(var(--index, 0) * 0.3s);
+            touch-action: none;
+            user-select: none;
+            -webkit-user-select: none;
+            will-change: transform, left, top;
+            padding: 0;
+            margin: 0;
+        }
+
+        @keyframes float {
+            0%, 100% {
+                transform: translateY(0px);
+            }
+            50% {
+                transform: translateY(-3px);
+            }
+        }
+
+        .puzzle-piece:hover {
+            filter: drop-shadow(0 5px 12px rgba(0, 0, 0, 0.4));
+            transform: translateY(-3px);
+        }
+
+        .puzzle-piece img {
+            display: block;
+            width: 100%;
+            height: auto;
+            max-height: 120px;
+            object-fit: contain;
+            border: none;
+            background: transparent;
+            position: relative;
+            z-index: 0;
+            pointer-events: none;
+            margin: 0;
+            padding: 0;
+        }
+
+        .puzzle-piece.dragging {
+            cursor: grabbing;
+            z-index: 1000;
+            animation: none;
+            filter: drop-shadow(0 10px 20px rgba(0, 0, 0, 0.5));
+            transition: none;
+            transform: scale(1.02);
+        }
+
+        .puzzle-piece.snapped {
+            animation: none;
+            transition: all 0.3s ease;
+            filter: drop-shadow(0 0 20px rgba(100, 255, 100, 0.6));
+        }
+
+        .puzzle-piece.correct {
+            filter: drop-shadow(0 0 25px rgba(100, 255, 100, 0.8));
+            animation: glow-green 1.5s ease-in-out infinite;
+        }
+
+        .puzzle-piece.wrong {
+            filter: drop-shadow(0 0 25px rgba(255, 50, 50, 0.8));
+            animation: shake 0.5s ease, glow-red 0.5s ease;
+        }
+
+        @keyframes glow-green {
+            0%, 100% { filter: drop-shadow(0 0 15px rgba(100, 255, 100, 0.6)); }
+            50% { filter: drop-shadow(0 0 30px rgba(100, 255, 100, 1)); }
+        }
+
+        @keyframes glow-red {
+            0%, 100% { filter: drop-shadow(0 0 15px rgba(255, 50, 50, 0.6)); }
+            50% { filter: drop-shadow(0 0 30px rgba(255, 50, 50, 1)); }
+        }
+
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            20% { transform: translateX(-10px); }
+            40% { transform: translateX(10px); }
+            60% { transform: translateX(-6px); }
+            80% { transform: translateX(6px); }
+        }
+
+        /* ===== STATS ===== */
+        .stats {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            margin-top: 15px;
+            padding: 12px 24px;
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 40px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            flex-shrink: 0;
+        }
+
+        .stats .score {
+            font-size: 20px;
+            font-weight: 700;
+            color: #ffffff;
+        }
+
+        .stats .score span {
+            color: #4aff4a;
+            font-size: 28px;
+            text-shadow: 0 0 10px rgba(74, 255, 74, 0.5);
+        }
+
+        .btn-group {
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+
+        .btn {
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            padding: 10px 28px;
+            border-radius: 60px;
+            font-size: 16px;
+            font-weight: 600;
+            color: #ffffff;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .btn:hover {
+            background: rgba(255, 255, 255, 0.2);
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+        }
+
+        .btn.check {
+            background: rgba(74, 255, 74, 0.2);
+            color: #4aff4a;
+            border-color: rgba(74, 255, 74, 0.3);
+        }
+
+        .btn.check:hover {
+            background: rgba(74, 255, 74, 0.3);
+        }
+
+        .btn.reset {
+            background: rgba(255, 255, 255, 0.1);
+        }
+
+        .btn.reset:hover {
+            background: rgba(255, 255, 255, 0.2);
+        }
+
+        .congrats {
+            text-align: center;
+            padding: 20px;
+            font-size: 34px;
+            font-weight: 700;
+            color: #4aff4a;
+            display: none;
+            background: rgba(74, 255, 74, 0.1);
+            border-radius: 40px;
+            margin-top: 12px;
+            border: 2px solid #4aff4a;
+            text-shadow: 0 0 20px rgba(74, 255, 74, 0.5);
+            flex-shrink: 0;
+        }
+
+        .congrats.show {
+            display: block;
+            animation: congrats-pop 0.6s ease;
+        }
+
+        @keyframes congrats-pop {
+            0% { transform: scale(0.8); opacity: 0; }
+            50% { transform: scale(1.05); }
+            100% { transform: scale(1); opacity: 1; }
+        }
+
+        @media (max-width: 700px) {
+            .container { padding: 12px; }
+            .game-area { padding: 16px; }
+            .puzzle-piece { max-width: 100px; }
+            .puzzle-piece img { max-height: 80px; }
+            .stats { flex-direction: column; gap: 10px; }
+            .btn { font-size: 14px; padding: 8px 18px; }
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>🧩 Table Puzzles</h1>
+    <div class="sub">🖐️ Move pieces on the table and press "Check"</div>
+
+    <div class="game-area">
+        <div class="puzzle-container" id="puzzleContainer"></div>
+
+        <div class="stats">
+            <div class="score">🧩 Pieces: <span id="scoreDisplay">36</span></div>
+            <div class="btn-group">
+                <button class="btn check" id="checkBtn">✅ Check</button>
+                <button class="btn reset" id="resetBtn">🔄 New Game</button>
+            </div>
+        </div>
+
+        <div class="congrats" id="congrats">🎉 Great job! All puzzles are correct! 🌟</div>
+    </div>
+</div>
+
+<script>
+    (function() {
+        // ============================================================
+        // 1. ALL 18 PUZZLE PAIRS
+        // ============================================================
+
+        const ALL_PAIRS = [
+            { id: 0, word: 'grandfather', def: 'father of my parent', wordImg: 'grandfather.png', defImg: 'grandfather_def.png' },
+            { id: 1, word: 'grandmother', def: 'mother of my parent', wordImg: 'grandmother.png', defImg: 'grandmother_def.png' },
+            { id: 2, word: 'uncle', def: 'brother of my parent', wordImg: 'uncle.png', defImg: 'uncle_def.png' },
+            { id: 3, word: 'aunt', def: 'sister of my parent', wordImg: 'aunt.png', defImg: 'aunt_def.png' },
+            { id: 4, word: 'cousins', def: 'children of my uncle/aunt', wordImg: 'cousins.png', defImg: 'cousins_def.png' },
+            { id: 5, word: 'grandparents', def: 'parents of my parents', wordImg: 'grandparents.png', defImg: 'grandparents_def.png' },
+            { id: 6, word: 'husband', def: 'a man who is married', wordImg: 'husband.png', defImg: 'husband_def.png' },
+            { id: 7, word: 'wife', def: 'a woman who is married', wordImg: 'wife.png', defImg: 'wife_def.png' },
+            { id: 8, word: 'mother', def: 'your female parent', wordImg: 'mother.png', defImg: 'mother_def.png' },
+            { id: 9, word: 'father', def: 'your male parent', wordImg: 'father.png', defImg: 'father_def.png' },
+            { id: 10, word: 'sister', def: 'a girl who has the same parents as you', wordImg: 'sister.png', defImg: 'sister_def.png' },
+            { id: 11, word: 'parents', def: 'your mother and father', wordImg: 'parents.png', defImg: 'parents_def.png' },
+            { id: 12, word: 'brother', def: 'a boy who has the same parents as you', wordImg: 'brother.png', defImg: 'brother_def.png' },
+            { id: 13, word: 'daughter', def: 'a female child of a parent', wordImg: 'daughter.png', defImg: 'daughter_def.png' },
+            { id: 14, word: 'son', def: 'a male child of a parent', wordImg: 'son.png', defImg: 'son_def.png' },
+            { id: 15, word: 'children', def: 'more than one child', wordImg: 'children.png', defImg: 'children_def.png' },
+            { id: 16, word: 'family', def: 'a group of people who are related', wordImg: 'family.png', defImg: 'family_def.png' },
+            { id: 17, word: 'relatives', def: 'members of your family', wordImg: 'relatives.png', defImg: 'relatives_def.png' }
+        ];
+
+        // ============================================================
+        // 2. STATE
+        // ============================================================
+
+        let items = [];
+        let isChecked = false;
+        let audioContext = null;
+        let draggedElement = null;
+        let offsetX = 0;
+        let offsetY = 0;
+        const SNAP_DISTANCE = 100;
+
+        // ============================================================
+        // 3. DOM
+        // ============================================================
+
+        const container = document.getElementById('puzzleContainer');
+        const scoreDisplay = document.getElementById('scoreDisplay');
+        const checkBtn = document.getElementById('checkBtn');
+        const resetBtn = document.getElementById('resetBtn');
+        const congrats = document.getElementById('congrats');
+
+        // ============================================================
+        // 4. FUNCTIONS
+        // ============================================================
+
+        function shuffle(arr) {
+            for (let i = arr.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [arr[i], arr[j]] = [arr[j], arr[i]];
+            }
+            return arr;
+        }
+
+        function initGame() {
+            isChecked = false;
+            congrats.classList.remove('show');
+
+            const rawItems = [];
+            ALL_PAIRS.forEach(p => {
+                rawItems.push({
+                    id: p.id,
+                    type: 'word',
+                    img: p.wordImg,
+                    pairId: p.id,
+                    label: p.word,
+                    x: 0,
+                    y: 0,
+                    snapped: false
+                });
+                rawItems.push({
+                    id: p.id,
+                    type: 'def',
+                    img: p.defImg,
+                    pairId: p.id,
+                    label: p.def,
+                    x: 0,
+                    y: 0,
+                    snapped: false
+                });
+            });
+
+            items = shuffle(rawItems);
+
+            renderItems();
+            updateScore();
+        }
+
+        function renderItems() {
+            container.innerHTML = '';
+            
+            requestAnimationFrame(() => {
+                const containerWidth = container.clientWidth;
+                const containerHeight = container.clientHeight;
+                
+                const cols = 6;
+                const rows = 6;
+                
+                const paddingX = 20;
+                const paddingY = 20;
+                
+                const availableWidth = containerWidth - (paddingX * 2);
+                const availableHeight = containerHeight - (paddingY * 2);
+                
+                const cellWidth = availableWidth / cols;
+                const cellHeight = availableHeight / rows;
+                
+                items.forEach((item, index) => {
+                    const el = document.createElement('div');
+                    el.className = 'puzzle-piece';
+                    el.dataset.index = index;
+                    el.dataset.pairId = item.pairId;
+                    el.dataset.type = item.type;
+                    el.style.setProperty('--index', index);
+                    
+                    const col = index % cols;
+                    const row = Math.floor(index / cols);
+                    
+                    const randomOffsetX = (Math.random() - 0.5) * 40;
+                    const randomOffsetY = (Math.random() - 0.5) * 30;
+                    
+                    const startX = paddingX + (col * cellWidth) + (cellWidth / 2) - 80 + randomOffsetX;
+                    const startY = paddingY + (row * cellHeight) + (cellHeight / 2) - 60 + randomOffsetY;
+                    
+                    item.x = Math.max(paddingX, Math.min(startX, containerWidth - paddingX - 160));
+                    item.y = Math.max(paddingY, Math.min(startY, containerHeight - paddingY - 120));
+                    
+                    el.style.left = item.x + 'px';
+                    el.style.top = item.y + 'px';
+                    
+                    const img = document.createElement('img');
+                    img.src = item.img;
+                    img.alt = item.label;
+                    img.draggable = false;
+                    img.onerror = function() {
+                        this.style.display = 'none';
+                        this.parentElement.innerHTML = `<span style="font-size:14px; font-weight:600; padding:10px; color: #fff; text-shadow: 0 2px 4px rgba(0,0,0,0.8);">${item.label}</span>`;
+                    };
+                    el.appendChild(img);
+                    
+                    el.addEventListener('mousedown', startDragging);
+                    el.addEventListener('touchstart', startDragging, {passive: false});
+                    
+                    container.appendChild(el);
+                });
+            });
+        }
+
+        function startDragging(e) {
+            if (isChecked) return;
+            
+            e.preventDefault();
+            draggedElement = this;
+            
+            const rect = draggedElement.getBoundingClientRect();
+            const containerRect = container.getBoundingClientRect();
+            
+            if (e.type === 'mousedown') {
+                offsetX = e.clientX - rect.left;
+                offsetY = e.clientY - rect.top;
+                document.addEventListener('mousemove', moveElement);
+                document.addEventListener('mouseup', stopDragging);
+            } else if (e.type === 'touchstart') {
+                const touch = e.touches[0];
+                offsetX = touch.clientX - rect.left;
+                offsetY = touch.clientY - rect.top;
+                document.addEventListener('touchmove', moveElement, {passive: false});
+                document.addEventListener('touchend', stopDragging);
+            }
+            
+            draggedElement.classList.add('dragging');
+            draggedElement.style.zIndex = 1000;
+            
+            playPickupSound();
+            
+            const index = parseInt(draggedElement.dataset.index);
+            if (items[index].snapped) {
+                items[index].snapped = false;
+                draggedElement.classList.remove('snapped');
+            }
+        }
+
+        function moveElement(e) {
+            if (!draggedElement) return;
+            
+            e.preventDefault();
+            
+            const containerRect = container.getBoundingClientRect();
+            
+            let clientX, clientY;
+            
+            if (e.type === 'mousemove') {
+                clientX = e.clientX;
+                clientY = e.clientY;
+            } else if (e.type === 'touchmove') {
+                clientX = e.touches[0].clientX;
+                clientY = e.touches[0].clientY;
+            }
+            
+            const newX = clientX - containerRect.left - offsetX;
+            const newY = clientY - containerRect.top - offsetY;
+            
+            const maxX = container.clientWidth - draggedElement.offsetWidth - 10;
+            const maxY = container.clientHeight - draggedElement.offsetHeight - 10;
+            
+            const boundedX = Math.max(10, Math.min(newX, maxX));
+            const boundedY = Math.max(10, Math.min(newY, maxY));
+            
+            draggedElement.style.left = boundedX + 'px';
+            draggedElement.style.top = boundedY + 'px';
+            
+            const index = parseInt(draggedElement.dataset.index);
+            items[index].x = boundedX;
+            items[index].y = boundedY;
+            
+            checkSnapping(draggedElement, index);
+        }
+
+        function checkSnapping(draggedEl, draggedIndex) {
+            const draggedItem = items[draggedIndex];
+            const allPieces = container.querySelectorAll('.puzzle-piece');
+            
+            allPieces.forEach(piece => {
+                if (piece === draggedEl) return;
+                
+                const pieceIndex = parseInt(piece.dataset.index);
+                const pieceItem = items[pieceIndex];
+                
+                if (pieceItem.pairId === draggedItem.pairId && 
+                    pieceItem.type !== draggedItem.type &&
+                    !pieceItem.snapped && !draggedItem.snapped) {
+                    
+                    const distance = Math.sqrt(
+                        Math.pow(pieceItem.x - draggedItem.x, 2) + 
+                        Math.pow(pieceItem.y - draggedItem.y, 2)
+                    );
+                    
+                    if (distance < SNAP_DISTANCE) {
+                        snapPieces(draggedEl, piece, draggedItem, pieceItem);
+                    }
+                }
+            });
+        }
+
+        function snapPieces(el1, el2, item1, item2) {
+            let wordEl, defEl, wordItem, defItem;
+            
+            if (item1.type === 'word') {
+                wordEl = el1;
+                defEl = el2;
+                wordItem = item1;
+                defItem = item2;
+            } else {
+                wordEl = el2;
+                defEl = el1;
+                wordItem = item2;
+                defItem = item1;
+            }
+            
+            const wordWidth = wordEl.offsetWidth;
+            const defWidth = defEl.offsetWidth;
+            
+            const centerX = (wordItem.x + defItem.x) / 2;
+            const centerY = (wordItem.y + defItem.y) / 2;
+            
+            const newWordX = centerX - (wordWidth + defWidth) / 2;
+            const newDefX = newWordX + wordWidth;
+            const newY = centerY;
+            
+            const maxX = container.clientWidth - defWidth - 10;
+            const boundedWordX = Math.max(10, Math.min(newWordX, maxX));
+            const boundedDefX = Math.max(10, Math.min(newDefX, maxX));
+            const boundedY = Math.max(10, Math.min(newY, container.clientHeight - 120));
+            
+            wordItem.x = boundedWordX;
+            wordItem.y = boundedY;
+            defItem.x = boundedDefX;
+            defItem.y = boundedY;
+            
+            wordItem.snapped = true;
+            defItem.snapped = true;
+            
+            wordEl.style.left = boundedWordX + 'px';
+            wordEl.style.top = boundedY + 'px';
+            defEl.style.left = boundedDefX + 'px';
+            defEl.style.top = boundedY + 'px';
+            
+            wordEl.classList.add('snapped');
+            defEl.classList.add('snapped');
+            
+            playSnapSound();
+        }
+
+        function stopDragging() {
+            if (!draggedElement) return;
+            
+            playDropSound();
+            
+            draggedElement.classList.remove('dragging');
+            draggedElement.style.zIndex = 1;
+            
+            document.removeEventListener('mousemove', moveElement);
+            document.removeEventListener('mouseup', stopDragging);
+            document.removeEventListener('touchmove', moveElement);
+            document.removeEventListener('touchend', stopDragging);
+            
+            draggedElement = null;
+        }
+
+        // ============================================================
+        // 5. REALISTIC SOUNDS
+        // ============================================================
+
+        function initAudioContext() {
+            if (!audioContext) {
+                audioContext = new (window.AudioContext || window.webkitAudioContext)();
+            }
+        }
+
+        function playPickupSound() {
+            try {
+                initAudioContext();
+                
+                const osc1 = audioContext.createOscillator();
+                const osc2 = audioContext.createOscillator();
+                const gain1 = audioContext.createGain();
+                const gain2 = audioContext.createGain();
+                
+                osc1.connect(gain1);
+                osc2.connect(gain2);
+                gain1.connect(audioContext.destination);
+                gain2.connect(audioContext.destination);
+                
+                osc1.type = 'triangle';
+                osc1.frequency.setValueAtTime(200, audioContext.currentTime);
+                osc1.frequency.exponentialRampToValueAtTime(150, audioContext.currentTime + 0.08);
+                
+                osc2.type = 'sine';
+                osc2.frequency.setValueAtTime(400, audioContext.currentTime);
+                osc2.frequency.exponentialRampToValueAtTime(300, audioContext.currentTime + 0.05);
+                
+                gain1.gain.setValueAtTime(0.2, audioContext.currentTime);
+                gain1.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.1);
+                
+                gain2.gain.setValueAtTime(0.15, audioContext.currentTime);
+                gain2.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.06);
+                
+                osc1.start(audioContext.currentTime);
+                osc1.stop(audioContext.currentTime + 0.1);
+                osc2.start(audioContext.currentTime);
+                osc2.stop(audioContext.currentTime + 0.06);
+            } catch (e) {
+                console.log('Sound unavailable');
+            }
+        }
+
+        function playDropSound() {
+            try {
+                initAudioContext();
+                
+                const osc = audioContext.createOscillator();
+                const gain = audioContext.createGain();
+                const filter = audioContext.createBiquadFilter();
+                
+                osc.connect(filter);
+                filter.connect(gain);
+                gain.connect(audioContext.destination);
+                
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(120, audioContext.currentTime);
+                osc.frequency.exponentialRampToValueAtTime(80, audioContext.currentTime + 0.08);
+                
+                filter.type = 'lowpass';
+                filter.frequency.setValueAtTime(1000, audioContext.currentTime);
+                
+                gain.gain.setValueAtTime(0.25, audioContext.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.1);
+                
+                osc.start(audioContext.currentTime);
+                osc.stop(audioContext.currentTime + 0.1);
+            } catch (e) {
+                console.log('Sound unavailable');
+            }
+        }
+
+        function playSnapSound() {
+            try {
+                initAudioContext();
+                
+                const osc1 = audioContext.createOscillator();
+                const osc2 = audioContext.createOscillator();
+                const gain1 = audioContext.createGain();
+                const gain2 = audioContext.createGain();
+                
+                osc1.connect(gain1);
+                osc2.connect(gain2);
+                gain1.connect(audioContext.destination);
+                gain2.connect(audioContext.destination);
+                
+                osc1.type = 'square';
+                osc1.frequency.setValueAtTime(800, audioContext.currentTime);
+                osc1.frequency.exponentialRampToValueAtTime(1200, audioContext.currentTime + 0.05);
+                
+                osc2.type = 'sine';
+                osc2.frequency.setValueAtTime(600, audioContext.currentTime);
+                osc2.frequency.exponentialRampToValueAtTime(1000, audioContext.currentTime + 0.08);
+                
+                gain1.gain.setValueAtTime(0.3, audioContext.currentTime);
+                gain1.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.08);
+                
+                gain2.gain.setValueAtTime(0.2, audioContext.currentTime);
+                gain2.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.1);
+                
+                osc1.start(audioContext.currentTime);
+                osc1.stop(audioContext.currentTime + 0.08);
+                osc2.start(audioContext.currentTime);
+                osc2.stop(audioContext.currentTime + 0.1);
+            } catch (e) {
+                console.log('Sound unavailable');
+            }
+        }
+
+        function playWinSound() {
+            try {
+                initAudioContext();
+                const notes = [523.25, 659.25, 783.99, 1046.50];
+                notes.forEach((freq, i) => {
+                    setTimeout(() => {
+                        const oscillator = audioContext.createOscillator();
+                        const gainNode = audioContext.createGain();
+                        
+                        oscillator.connect(gainNode);
+                        gainNode.connect(audioContext.destination);
+                        
+                        oscillator.type = 'sine';
+                        oscillator.frequency.setValueAtTime(freq, audioContext.currentTime);
+                        
+                        gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
+                        gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.3);
+                        
+                        oscillator.start(audioContext.currentTime);
+                        oscillator.stop(audioContext.currentTime + 0.3);
+                    }, i * 150);
+                });
+            } catch (e) {
+                console.log('Sound unavailable');
+            }
+        }
+
+        function playWrongSound() {
+            try {
+                initAudioContext();
+                const oscillator = audioContext.createOscillator();
+                const gainNode = audioContext.createGain();
+                
+                oscillator.connect(gainNode);
+                gainNode.connect(audioContext.destination);
+                
+                oscillator.type = 'sawtooth';
+                oscillator.frequency.setValueAtTime(200, audioContext.currentTime);
+                
+                gainNode.gain.setValueAtTime(0.2, audioContext.currentTime);
+                gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.4);
+                
+                oscillator.start(audioContext.currentTime);
+                oscillator.stop(audioContext.currentTime + 0.4);
+            } catch (e) {
+                console.log('Sound unavailable');
+            }
+        }
+
+        // ============================================================
+        // 6. CHECK
+        // ============================================================
+
+        function checkAnswers() {
+            if (isChecked) {
+                alert('✅ You have already checked! Press "New Game" to start over.');
+                return;
+            }
+
+            let correct = 0;
+            const totalPairs = ALL_PAIRS.length;
+
+            ALL_PAIRS.forEach(pair => {
+                const wordItem = items.find(item => item.pairId === pair.id && item.type === 'word');
+                const defItem = items.find(item => item.pairId === pair.id && item.type === 'def');
+                
+                if (wordItem && defItem) {
+                    const distance = Math.sqrt(
+                        Math.pow(wordItem.x - defItem.x, 2) + 
+                        Math.pow(wordItem.y - defItem.y, 2)
+                    );
+                    
+                    const wordEl = document.querySelector(`[data-pair-id="${pair.id}"][data-type="word"]`);
+                    const defEl = document.querySelector(`[data-pair-id="${pair.id}"][data-type="def"]`);
+                    
+                    if (wordEl && defEl) {
+                        wordEl.classList.remove('correct', 'wrong');
+                        defEl.classList.remove('correct', 'wrong');
+                        
+                        if (distance < 150) {
+                            wordEl.classList.add('correct');
+                            defEl.classList.add('correct');
+                            correct++;
+                        } else {
+                            wordEl.classList.add('wrong');
+                            defEl.classList.add('wrong');
+                            
+                            setTimeout(() => {
+                                wordEl.classList.remove('wrong');
+                                defEl.classList.remove('wrong');
+                            }, 1500);
+                        }
+                    }
+                }
+            });
+
+            isChecked = true;
+
+            if (correct === totalPairs) {
+                congrats.classList.add('show');
+                playWinSound();
+            } else {
+                playWrongSound();
+                alert(`🧩 Correct: ${correct} / ${totalPairs}. Try again!`);
+            }
+        }
+
+        // ============================================================
+        // 7. UPDATE SCORE
+        // ============================================================
+
+        function updateScore() {
+            scoreDisplay.textContent = items.length;
+        }
+
+        // ============================================================
+        // 8. RESET
+        // ============================================================
+
+        function resetGame() {
+            initGame();
+            isChecked = false;
+            congrats.classList.remove('show');
+        }
+
+        // ============================================================
+        // 9. EVENTS
+        // ============================================================
+
+        checkBtn.addEventListener('click', checkAnswers);
+        resetBtn.addEventListener('click', resetGame);
+
+        // ============================================================
+        // 10. START
+        // ============================================================
+
+        initGame();
+
+        console.log('🧩 Table Puzzles launched!');
+        console.log('🖐️ Move pieces on the table.');
+        console.log('✅ Press "Check" to verify.');
+    })();
+</script>
+
+</body>
+</html>
