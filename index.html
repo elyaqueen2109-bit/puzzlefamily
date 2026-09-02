@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no"/>
     <title>🧩 Table Puzzles — Free Movement</title>
     <style>
         * {
@@ -18,7 +18,7 @@
             display: flex;
             justify-content: center;
             align-items: center;
-            padding: 20px;
+            padding: 10px;
             overflow: hidden;
             position: relative;
             user-select: none;
@@ -30,10 +30,10 @@
         .container {
             max-width: 1400px;
             width: 100%;
-            height: 90vh;
+            height: 95vh;
             background: rgba(0, 0, 0, 0.5);
-            border-radius: 48px;
-            padding: 20px 25px 30px;
+            border-radius: 30px;
+            padding: 15px;
             box-shadow: 0 30px 60px rgba(0, 0, 0, 0.6);
             border: 1px solid rgba(255, 255, 255, 0.1);
             position: relative;
@@ -43,7 +43,7 @@
         }
 
         h1 {
-            font-size: 32px;
+            font-size: 24px;
             font-weight: 700;
             color: #ffffff;
             text-align: center;
@@ -55,15 +55,15 @@
         .sub {
             text-align: center;
             color: #cccccc;
-            font-size: 16px;
-            margin-bottom: 12px;
+            font-size: 14px;
+            margin-bottom: 8px;
             flex-shrink: 0;
         }
 
         .game-area {
             background: transparent;
-            border-radius: 32px;
-            padding: 20px;
+            border-radius: 20px;
+            padding: 10px;
             position: relative;
             overflow: hidden;
             flex: 1;
@@ -78,15 +78,28 @@
             width: 100%;
             flex: 1;
             min-height: 0;
-            overflow: hidden;
-            border-radius: 20px;
+            overflow: auto;
+            -webkit-overflow-scrolling: touch;
+            border-radius: 15px;
             background-image: url('table.png');
             background-size: cover;
             background-position: center;
             background-repeat: no-repeat;
+            background-attachment: local;
             box-shadow: 
                 inset 0 0 30px rgba(0, 0, 0, 0.3),
                 0 10px 30px rgba(0, 0, 0, 0.5);
+            touch-action: pan-x pan-y;
+        }
+
+        /* Внутренний контейнер для пазлов */
+        .puzzle-inner {
+            position: relative;
+            min-width: 100%;
+            min-height: 100%;
+            width: max-content;
+            height: max-content;
+            padding: 20px;
         }
 
         /* ===== PUZZLE PIECE ===== */
@@ -98,7 +111,7 @@
             overflow: visible;
             cursor: grab;
             transition: all 0.3s cubic-bezier(0.2, 0.9, 0.3, 1.1);
-            max-width: 160px;
+            max-width: 140px;
             filter: drop-shadow(0 3px 8px rgba(0, 0, 0, 0.3));
             z-index: 1;
             animation: float 4s ease-in-out infinite;
@@ -129,7 +142,7 @@
             display: block;
             width: 100%;
             height: auto;
-            max-height: 120px;
+            max-height: 100px;
             object-fit: contain;
             border: none;
             background: transparent;
@@ -189,38 +202,39 @@
             justify-content: space-between;
             align-items: center;
             flex-wrap: wrap;
-            margin-top: 15px;
-            padding: 12px 24px;
+            margin-top: 10px;
+            padding: 10px 15px;
             background: rgba(0, 0, 0, 0.3);
-            border-radius: 40px;
+            border-radius: 30px;
             border: 1px solid rgba(255, 255, 255, 0.1);
             flex-shrink: 0;
+            gap: 8px;
         }
 
         .stats .score {
-            font-size: 20px;
+            font-size: 16px;
             font-weight: 700;
             color: #ffffff;
         }
 
         .stats .score span {
             color: #4aff4a;
-            font-size: 28px;
+            font-size: 20px;
             text-shadow: 0 0 10px rgba(74, 255, 74, 0.5);
         }
 
         .btn-group {
             display: flex;
-            gap: 12px;
+            gap: 8px;
             flex-wrap: wrap;
         }
 
         .btn {
             background: rgba(255, 255, 255, 0.1);
             border: 1px solid rgba(255, 255, 255, 0.2);
-            padding: 10px 28px;
-            border-radius: 60px;
-            font-size: 16px;
+            padding: 8px 16px;
+            border-radius: 50px;
+            font-size: 14px;
             font-weight: 600;
             color: #ffffff;
             cursor: pointer;
@@ -253,14 +267,14 @@
 
         .congrats {
             text-align: center;
-            padding: 20px;
-            font-size: 34px;
+            padding: 15px;
+            font-size: 24px;
             font-weight: 700;
             color: #4aff4a;
             display: none;
             background: rgba(74, 255, 74, 0.1);
-            border-radius: 40px;
-            margin-top: 12px;
+            border-radius: 30px;
+            margin-top: 8px;
             border: 2px solid #4aff4a;
             text-shadow: 0 0 20px rgba(74, 255, 74, 0.5);
             flex-shrink: 0;
@@ -277,13 +291,58 @@
             100% { transform: scale(1); opacity: 1; }
         }
 
-        @media (max-width: 700px) {
-            .container { padding: 12px; }
-            .game-area { padding: 16px; }
-            .puzzle-piece { max-width: 100px; }
-            .puzzle-piece img { max-height: 80px; }
-            .stats { flex-direction: column; gap: 10px; }
-            .btn { font-size: 14px; padding: 8px 18px; }
+        /* Адаптация для телефонов */
+        @media (max-width: 768px) {
+            .container { 
+                padding: 8px; 
+                height: 98vh;
+                border-radius: 15px;
+            }
+            
+            h1 { font-size: 18px; }
+            .sub { font-size: 12px; }
+            
+            .game-area { 
+                padding: 5px; 
+                border-radius: 10px;
+            }
+            
+            .puzzle-piece { 
+                max-width: 90px; 
+            }
+            
+            .puzzle-piece img { 
+                max-height: 65px; 
+            }
+            
+            .stats { 
+                flex-direction: row; 
+                justify-content: space-between;
+                padding: 8px 10px;
+            }
+            
+            .btn { 
+                font-size: 12px; 
+                padding: 6px 12px; 
+            }
+        }
+
+        @media (max-width: 480px) {
+            .puzzle-piece { 
+                max-width: 70px; 
+            }
+            
+            .puzzle-piece img { 
+                max-height: 50px; 
+            }
+            
+            .btn { 
+                font-size: 11px; 
+                padding: 5px 10px; 
+            }
+            
+            .stats .score { font-size: 14px; }
+            .stats .score span { font-size: 16px; }
         }
     </style>
 </head>
@@ -294,7 +353,9 @@
     <div class="sub">🖐️ Move pieces on the table and press "Check"</div>
 
     <div class="game-area">
-        <div class="puzzle-container" id="puzzleContainer"></div>
+        <div class="puzzle-container" id="puzzleContainer">
+            <div class="puzzle-inner" id="puzzleInner"></div>
+        </div>
 
         <div class="stats">
             <div class="score">🧩 Pieces: <span id="scoreDisplay">36</span></div>
@@ -345,13 +406,17 @@
         let draggedElement = null;
         let offsetX = 0;
         let offsetY = 0;
-        const SNAP_DISTANCE = 100;
+        const SNAP_DISTANCE = 80;
+        let isDraggingPiece = false;
+        let isScrolling = false;
+        let scrollTimeout = null;
 
         // ============================================================
         // 3. DOM
         // ============================================================
 
         const container = document.getElementById('puzzleContainer');
+        const puzzleInner = document.getElementById('puzzleInner');
         const scoreDisplay = document.getElementById('scoreDisplay');
         const checkBtn = document.getElementById('checkBtn');
         const resetBtn = document.getElementById('resetBtn');
@@ -367,6 +432,13 @@
                 [arr[i], arr[j]] = [arr[j], arr[i]];
             }
             return arr;
+        }
+
+        function getPieceSize() {
+            const width = window.innerWidth;
+            if (width <= 480) return { maxWidth: 70, maxHeight: 50, spacing: 80 };
+            if (width <= 768) return { maxWidth: 90, maxHeight: 65, spacing: 100 };
+            return { maxWidth: 140, maxHeight: 100, spacing: 160 };
         }
 
         function initGame() {
@@ -404,23 +476,30 @@
         }
 
         function renderItems() {
-            container.innerHTML = '';
+            puzzleInner.innerHTML = '';
             
             requestAnimationFrame(() => {
-                const containerWidth = container.clientWidth;
-                const containerHeight = container.clientHeight;
+                const pieceSize = getPieceSize();
+                const containerWidth = puzzleInner.clientWidth || container.clientWidth;
+                const containerHeight = puzzleInner.clientHeight || container.clientHeight;
                 
-                const cols = 6;
-                const rows = 6;
+                // Для мобильных - создаём большую область
+                const isMobile = window.innerWidth <= 768;
+                const cols = isMobile ? 4 : 6;
+                const rows = Math.ceil(items.length / cols);
                 
                 const paddingX = 20;
                 const paddingY = 20;
                 
-                const availableWidth = containerWidth - (paddingX * 2);
-                const availableHeight = containerHeight - (paddingY * 2);
+                const cellWidth = pieceSize.spacing;
+                const cellHeight = isMobile ? 90 : 120;
                 
-                const cellWidth = availableWidth / cols;
-                const cellHeight = availableHeight / rows;
+                // Устанавливаем размер внутреннего контейнера
+                const totalWidth = paddingX * 2 + cols * cellWidth;
+                const totalHeight = paddingY * 2 + rows * cellHeight;
+                
+                puzzleInner.style.width = Math.max(totalWidth, containerWidth) + 'px';
+                puzzleInner.style.height = Math.max(totalHeight, containerHeight) + 'px';
                 
                 items.forEach((item, index) => {
                     const el = document.createElement('div');
@@ -429,36 +508,38 @@
                     el.dataset.pairId = item.pairId;
                     el.dataset.type = item.type;
                     el.style.setProperty('--index', index);
+                    el.style.maxWidth = pieceSize.maxWidth + 'px';
                     
                     const col = index % cols;
                     const row = Math.floor(index / cols);
                     
-                    const randomOffsetX = (Math.random() - 0.5) * 40;
-                    const randomOffsetY = (Math.random() - 0.5) * 30;
+                    const randomOffsetX = (Math.random() - 0.5) * 20;
+                    const randomOffsetY = (Math.random() - 0.5) * 15;
                     
-                    const startX = paddingX + (col * cellWidth) + (cellWidth / 2) - 80 + randomOffsetX;
-                    const startY = paddingY + (row * cellHeight) + (cellHeight / 2) - 60 + randomOffsetY;
+                    const startX = paddingX + (col * cellWidth) + randomOffsetX;
+                    const startY = paddingY + (row * cellHeight) + randomOffsetY;
                     
-                    item.x = Math.max(paddingX, Math.min(startX, containerWidth - paddingX - 160));
-                    item.y = Math.max(paddingY, Math.min(startY, containerHeight - paddingY - 120));
+                    item.x = startX;
+                    item.y = startY;
                     
-                    el.style.left = item.x + 'px';
-                    el.style.top = item.y + 'px';
+                    el.style.left = startX + 'px';
+                    el.style.top = startY + 'px';
                     
                     const img = document.createElement('img');
                     img.src = item.img;
                     img.alt = item.label;
                     img.draggable = false;
+                    img.style.maxHeight = pieceSize.maxHeight + 'px';
                     img.onerror = function() {
                         this.style.display = 'none';
-                        this.parentElement.innerHTML = `<span style="font-size:14px; font-weight:600; padding:10px; color: #fff; text-shadow: 0 2px 4px rgba(0,0,0,0.8);">${item.label}</span>`;
+                        this.parentElement.innerHTML = `<span style="font-size:12px; font-weight:600; padding:8px; color: #fff; text-shadow: 0 2px 4px rgba(0,0,0,0.8);">${item.label}</span>`;
                     };
                     el.appendChild(img);
                     
                     el.addEventListener('mousedown', startDragging);
                     el.addEventListener('touchstart', startDragging, {passive: false});
                     
-                    container.appendChild(el);
+                    puzzleInner.appendChild(el);
                 });
             });
         }
@@ -468,9 +549,9 @@
             
             e.preventDefault();
             draggedElement = this;
+            isDraggingPiece = true;
             
             const rect = draggedElement.getBoundingClientRect();
-            const containerRect = container.getBoundingClientRect();
             
             if (e.type === 'mousedown') {
                 offsetX = e.clientX - rect.left;
@@ -498,11 +579,9 @@
         }
 
         function moveElement(e) {
-            if (!draggedElement) return;
+            if (!draggedElement || !isDraggingPiece) return;
             
             e.preventDefault();
-            
-            const containerRect = container.getBoundingClientRect();
             
             let clientX, clientY;
             
@@ -514,11 +593,14 @@
                 clientY = e.touches[0].clientY;
             }
             
-            const newX = clientX - containerRect.left - offsetX;
-            const newY = clientY - containerRect.top - offsetY;
+            // Получаем позицию относительно puzzleInner с учётом прокрутки
+            const innerRect = puzzleInner.getBoundingClientRect();
+            const newX = clientX - innerRect.left - offsetX;
+            const newY = clientY - innerRect.top - offsetY;
             
-            const maxX = container.clientWidth - draggedElement.offsetWidth - 10;
-            const maxY = container.clientHeight - draggedElement.offsetHeight - 10;
+            // Ограничиваем перемещение в пределах puzzleInner
+            const maxX = puzzleInner.clientWidth - draggedElement.offsetWidth - 10;
+            const maxY = puzzleInner.clientHeight - draggedElement.offsetHeight - 10;
             
             const boundedX = Math.max(10, Math.min(newX, maxX));
             const boundedY = Math.max(10, Math.min(newY, maxY));
@@ -535,7 +617,7 @@
 
         function checkSnapping(draggedEl, draggedIndex) {
             const draggedItem = items[draggedIndex];
-            const allPieces = container.querySelectorAll('.puzzle-piece');
+            const allPieces = puzzleInner.querySelectorAll('.puzzle-piece');
             
             allPieces.forEach(piece => {
                 if (piece === draggedEl) return;
@@ -584,10 +666,10 @@
             const newDefX = newWordX + wordWidth;
             const newY = centerY;
             
-            const maxX = container.clientWidth - defWidth - 10;
+            const maxX = puzzleInner.clientWidth - defWidth - 10;
             const boundedWordX = Math.max(10, Math.min(newWordX, maxX));
             const boundedDefX = Math.max(10, Math.min(newDefX, maxX));
-            const boundedY = Math.max(10, Math.min(newY, container.clientHeight - 120));
+            const boundedY = Math.max(10, Math.min(newY, puzzleInner.clientHeight - 100));
             
             wordItem.x = boundedWordX;
             wordItem.y = boundedY;
@@ -622,6 +704,7 @@
             document.removeEventListener('touchend', stopDragging);
             
             draggedElement = null;
+            isDraggingPiece = false;
         }
 
         // ============================================================
@@ -809,14 +892,14 @@
                         Math.pow(wordItem.y - defItem.y, 2)
                     );
                     
-                    const wordEl = document.querySelector(`[data-pair-id="${pair.id}"][data-type="word"]`);
-                    const defEl = document.querySelector(`[data-pair-id="${pair.id}"][data-type="def"]`);
+                    const wordEl = puzzleInner.querySelector(`[data-pair-id="${pair.id}"][data-type="word"]`);
+                    const defEl = puzzleInner.querySelector(`[data-pair-id="${pair.id}"][data-type="def"]`);
                     
                     if (wordEl && defEl) {
                         wordEl.classList.remove('correct', 'wrong');
                         defEl.classList.remove('correct', 'wrong');
                         
-                        if (distance < 150) {
+                        if (distance < 120) {
                             wordEl.classList.add('correct');
                             defEl.classList.add('correct');
                             correct++;
@@ -869,11 +952,29 @@
         checkBtn.addEventListener('click', checkAnswers);
         resetBtn.addEventListener('click', resetGame);
 
+        // Предотвращаем прокрутку страницы при игре
+        document.addEventListener('touchmove', function(e) {
+            if (isDraggingPiece) {
+                e.preventDefault();
+            }
+        }, {passive: false});
+
         // ============================================================
         // 10. START
         // ============================================================
 
         initGame();
+
+        // Пересоздаём при изменении размера окна
+        let resizeTimeout;
+        window.addEventListener('resize', function() {
+            clearTimeout(resizeTimeout);
+            resizeTimeout = setTimeout(() => {
+                if (!isChecked) {
+                    renderItems();
+                }
+            }, 300);
+        });
 
         console.log('🧩 Table Puzzles launched!');
         console.log('🖐️ Move pieces on the table.');
