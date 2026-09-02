@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes, maximum-scale=3.0, minimum-scale=0.5"/>
     <title>🧩 Table Puzzles — Free Movement</title>
     <style>
         * {
@@ -24,7 +24,7 @@
             user-select: none;
             -webkit-user-select: none;
             -webkit-tap-highlight-color: transparent;
-            touch-action: none;
+            touch-action: manipulation;
         }
 
         .container {
@@ -72,34 +72,48 @@
             min-height: 0;
         }
 
-        /* ===== TABLE BACKGROUND ===== */
-        .puzzle-container {
+        /* ===== ZOOM CONTAINER ===== */
+        .zoom-wrapper {
             position: relative;
             width: 100%;
             flex: 1;
             min-height: 0;
-            overflow: auto;
-            -webkit-overflow-scrolling: touch;
+            overflow: hidden;
+            border-radius: 15px;
+            touch-action: none;
+        }
+
+        /* ===== TABLE BACKGROUND ===== */
+        .puzzle-container {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
             border-radius: 15px;
             background-image: url('table.png');
             background-size: cover;
             background-position: center;
             background-repeat: no-repeat;
-            background-attachment: local;
             box-shadow: 
                 inset 0 0 30px rgba(0, 0, 0, 0.3),
                 0 10px 30px rgba(0, 0, 0, 0.5);
-            touch-action: pan-x pan-y;
+            transform-origin: 0 0;
+            transition: transform 0.1s ease-out;
         }
 
         /* Внутренний контейнер для пазлов */
         .puzzle-inner {
-            position: relative;
+            position: absolute;
+            top: 0;
+            left: 0;
             min-width: 100%;
             min-height: 100%;
             width: max-content;
             height: max-content;
             padding: 20px;
+            transform-origin: 0 0;
         }
 
         /* ===== PUZZLE PIECE ===== */
@@ -194,6 +208,42 @@
             40% { transform: translateX(10px); }
             60% { transform: translateX(-6px); }
             80% { transform: translateX(6px); }
+        }
+
+        /* ===== ZOOM CONTROLS ===== */
+        .zoom-controls {
+            position: absolute;
+            bottom: 10px;
+            right: 10px;
+            display: flex;
+            gap: 8px;
+            z-index: 100;
+        }
+
+        .zoom-btn {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: rgba(0, 0, 0, 0.7);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            color: #ffffff;
+            font-size: 20px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s;
+            user-select: none;
+            -webkit-user-select: none;
+        }
+
+        .zoom-btn:hover {
+            background: rgba(0, 0, 0, 0.9);
+            transform: scale(1.1);
+        }
+
+        .zoom-btn:active {
+            transform: scale(0.9);
         }
 
         /* ===== STATS ===== */
@@ -325,6 +375,12 @@
                 font-size: 12px; 
                 padding: 6px 12px; 
             }
+            
+            .zoom-btn {
+                width: 35px;
+                height: 35px;
+                font-size: 18px;
+            }
         }
 
         @media (max-width: 480px) {
@@ -353,8 +409,16 @@
     <div class="sub">🖐️ Move pieces on the table and press "Check"</div>
 
     <div class="game-area">
-        <div class="puzzle-container" id="puzzleContainer">
-            <div class="puzzle-inner" id="puzzleInner"></div>
+        <div class="zoom-wrapper" id="zoomWrapper">
+            <div class="puzzle-container" id="puzzleContainer">
+                <div class="puzzle-inner" id="puzzleInner"></div>
+            </div>
+            
+            <div class="zoom-controls">
+                <button class="zoom-btn" id="zoomInBtn" title="Zoom In">+</button>
+                <button class="zoom-btn" id="zoomOutBtn" title="Zoom Out">−</button>
+                <button class="zoom-btn" id="zoomResetBtn" title="Reset Zoom">⟲</button>
+            </div>
         </div>
 
         <div class="stats">
@@ -408,19 +472,35 @@
         let offsetY = 0;
         const SNAP_DISTANCE = 80;
         let isDraggingPiece = false;
-        let isScrolling = false;
-        let scrollTimeout = null;
+        
+        // Zoom state
+        let scale = 1;
+        let translateX = 0;
+        let translateY = 0;
+        const MIN_SCALE = 0.5;
+        const MAX_SCALE = 3;
+        let initialPinchDistance = 0;
+        let initialScale = 1;
+        let initialTranslateX = 0;
+        let initialTranslateY = 0;
+        let pinchCenterX = 0;
+        let pinchCenterY = 0;
+        let isPinching = false;
 
         // ============================================================
         // 3. DOM
         // ============================================================
 
+        const zoomWrapper = document.getElementById('zoomWrapper');
         const container = document.getElementById('puzzleContainer');
         const puzzleInner = document.getElementById('puzzleInner');
         const scoreDisplay = document.getElementById('scoreDisplay');
         const checkBtn = document.getElementById('checkBtn');
         const resetBtn = document.getElementById('resetBtn');
         const congrats = document.getElementById('congrats');
+        const zoomInBtn = document.getElementById('zoomInBtn');
+        const zoomOutBtn = document.getElementById('zoomOutBtn');
+        const zoomResetBtn = document.getElementById('zoomResetBtn');
 
         // ============================================================
         // 4. FUNCTIONS
@@ -441,9 +521,40 @@
             return { maxWidth: 140, maxHeight: 100, spacing: 160 };
         }
 
+        function applyTransform() {
+            container.style.transform = `translate(${translateX}px, ${translateY}px) scale(${scale})`;
+        }
+
+        function setZoom(newScale, centerX, centerY) {
+            if (isDraggingPiece) return;
+            
+            const oldScale = scale;
+            scale = Math.max(MIN_SCALE, Math.min(newScale, MAX_SCALE));
+            
+            if (centerX !== undefined && centerY !== undefined) {
+                // Zoom towards pinch center
+                const rect = zoomWrapper.getBoundingClientRect();
+                const cx = centerX - rect.left;
+                const cy = centerY - rect.top;
+                
+                translateX = cx - (cx - translateX) * (scale / oldScale);
+                translateY = cy - (cy - translateY) * (scale / oldScale);
+            }
+            
+            applyTransform();
+        }
+
+        function resetZoom() {
+            scale = 1;
+            translateX = 0;
+            translateY = 0;
+            applyTransform();
+        }
+
         function initGame() {
             isChecked = false;
             congrats.classList.remove('show');
+            resetZoom();
 
             const rawItems = [];
             ALL_PAIRS.forEach(p => {
@@ -480,10 +591,9 @@
             
             requestAnimationFrame(() => {
                 const pieceSize = getPieceSize();
-                const containerWidth = puzzleInner.clientWidth || container.clientWidth;
-                const containerHeight = puzzleInner.clientHeight || container.clientHeight;
+                const containerWidth = puzzleInner.clientWidth || zoomWrapper.clientWidth;
+                const containerHeight = puzzleInner.clientHeight || zoomWrapper.clientHeight;
                 
-                // Для мобильных - создаём большую область
                 const isMobile = window.innerWidth <= 768;
                 const cols = isMobile ? 4 : 6;
                 const rows = Math.ceil(items.length / cols);
@@ -494,7 +604,6 @@
                 const cellWidth = pieceSize.spacing;
                 const cellHeight = isMobile ? 90 : 120;
                 
-                // Устанавливаем размер внутреннего контейнера
                 const totalWidth = paddingX * 2 + cols * cellWidth;
                 const totalHeight = paddingY * 2 + rows * cellHeight;
                 
@@ -558,7 +667,7 @@
                 offsetY = e.clientY - rect.top;
                 document.addEventListener('mousemove', moveElement);
                 document.addEventListener('mouseup', stopDragging);
-            } else if (e.type === 'touchstart') {
+            } else if (e.type === 'touchstart' && e.touches.length === 1) {
                 const touch = e.touches[0];
                 offsetX = touch.clientX - rect.left;
                 offsetY = touch.clientY - rect.top;
@@ -588,17 +697,17 @@
             if (e.type === 'mousemove') {
                 clientX = e.clientX;
                 clientY = e.clientY;
-            } else if (e.type === 'touchmove') {
+            } else if (e.type === 'touchmove' && e.touches.length === 1) {
                 clientX = e.touches[0].clientX;
                 clientY = e.touches[0].clientY;
+            } else {
+                return;
             }
             
-            // Получаем позицию относительно puzzleInner с учётом прокрутки
             const innerRect = puzzleInner.getBoundingClientRect();
-            const newX = clientX - innerRect.left - offsetX;
-            const newY = clientY - innerRect.top - offsetY;
+            const newX = (clientX - innerRect.left - offsetX) / scale;
+            const newY = (clientY - innerRect.top - offsetY) / scale;
             
-            // Ограничиваем перемещение в пределах puzzleInner
             const maxX = puzzleInner.clientWidth - draggedElement.offsetWidth - 10;
             const maxY = puzzleInner.clientHeight - draggedElement.offsetHeight - 10;
             
@@ -708,7 +817,102 @@
         }
 
         // ============================================================
-        // 5. REALISTIC SOUNDS
+        // 5. PINCH ZOOM HANDLERS
+        // ============================================================
+
+        zoomWrapper.addEventListener('touchstart', function(e) {
+            if (e.touches.length === 2) {
+                isPinching = true;
+                initialPinchDistance = getDistance(e.touches[0], e.touches[1]);
+                initialScale = scale;
+                initialTranslateX = translateX;
+                initialTranslateY = translateY;
+                
+                const rect = zoomWrapper.getBoundingClientRect();
+                pinchCenterX = (e.touches[0].clientX + e.touches[1].clientX) / 2 - rect.left;
+                pinchCenterY = (e.touches[0].clientY + e.touches[1].clientY) / 2 - rect.top;
+                
+                e.preventDefault();
+            }
+        }, {passive: false});
+
+        zoomWrapper.addEventListener('touchmove', function(e) {
+            if (isPinching && e.touches.length === 2) {
+                e.preventDefault();
+                
+                const newDistance = getDistance(e.touches[0], e.touches[1]);
+                const newScale = initialScale * (newDistance / initialPinchDistance);
+                
+                scale = Math.max(MIN_SCALE, Math.min(newScale, MAX_SCALE));
+                
+                // Zoom towards pinch center
+                translateX = pinchCenterX - (pinchCenterX - initialTranslateX) * (scale / initialScale);
+                translateY = pinchCenterY - (pinchCenterY - initialTranslateY) * (scale / initialScale);
+                
+                applyTransform();
+            } else if (e.touches.length === 1 && !isDraggingPiece && scale > 1) {
+                // Pan when zoomed in
+                e.preventDefault();
+                
+                const touch = e.touches[0];
+                if (!this.lastTouchX) {
+                    this.lastTouchX = touch.clientX;
+                    this.lastTouchY = touch.clientY;
+                }
+                
+                const deltaX = touch.clientX - this.lastTouchX;
+                const deltaY = touch.clientY - this.lastTouchY;
+                
+                translateX += deltaX;
+                translateY += deltaY;
+                
+                this.lastTouchX = touch.clientX;
+                this.lastTouchY = touch.clientY;
+                
+                applyTransform();
+            }
+        }, {passive: false});
+
+        zoomWrapper.addEventListener('touchend', function(e) {
+            if (e.touches.length < 2) {
+                isPinching = false;
+                initialPinchDistance = 0;
+            }
+            
+            if (e.touches.length === 0) {
+                this.lastTouchX = null;
+                this.lastTouchY = null;
+            }
+        });
+
+        function getDistance(touch1, touch2) {
+            const dx = touch1.clientX - touch2.clientX;
+            const dy = touch1.clientY - touch2.clientY;
+            return Math.sqrt(dx * dx + dy * dy);
+        }
+
+        // ============================================================
+        // 6. ZOOM BUTTONS
+        // ============================================================
+
+        zoomInBtn.addEventListener('click', function() {
+            const rect = zoomWrapper.getBoundingClientRect();
+            const centerX = rect.left + rect.width / 2;
+            const centerY = rect.top + rect.height / 2;
+            setZoom(scale * 1.2, centerX, centerY);
+        });
+
+        zoomOutBtn.addEventListener('click', function() {
+            const rect = zoomWrapper.getBoundingClientRect();
+            const centerX = rect.left + rect.width / 2;
+            const centerY = rect.top + rect.height / 2;
+            setZoom(scale / 1.2, centerX, centerY);
+        });
+
+        zoomResetBtn.addEventListener('click', resetZoom);
+
+        // ============================================================
+        // 7. REALISTIC SOUNDS
         // ============================================================
 
         function initAudioContext() {
@@ -870,7 +1074,7 @@
         }
 
         // ============================================================
-        // 6. CHECK
+        // 8. CHECK
         // ============================================================
 
         function checkAnswers() {
@@ -928,7 +1132,7 @@
         }
 
         // ============================================================
-        // 7. UPDATE SCORE
+        // 9. UPDATE SCORE
         // ============================================================
 
         function updateScore() {
@@ -936,36 +1140,29 @@
         }
 
         // ============================================================
-        // 8. RESET
+        // 10. RESET
         // ============================================================
 
         function resetGame() {
             initGame();
             isChecked = false;
             congrats.classList.remove('show');
+            resetZoom();
         }
 
         // ============================================================
-        // 9. EVENTS
+        // 11. EVENTS
         // ============================================================
 
         checkBtn.addEventListener('click', checkAnswers);
         resetBtn.addEventListener('click', resetGame);
 
-        // Предотвращаем прокрутку страницы при игре
-        document.addEventListener('touchmove', function(e) {
-            if (isDraggingPiece) {
-                e.preventDefault();
-            }
-        }, {passive: false});
-
         // ============================================================
-        // 10. START
+        // 12. START
         // ============================================================
 
         initGame();
 
-        // Пересоздаём при изменении размера окна
         let resizeTimeout;
         window.addEventListener('resize', function() {
             clearTimeout(resizeTimeout);
@@ -978,6 +1175,7 @@
 
         console.log('🧩 Table Puzzles launched!');
         console.log('🖐️ Move pieces on the table.');
+        console.log('🔍 Pinch to zoom, drag to pan.');
         console.log('✅ Press "Check" to verify.');
     })();
 </script>
